@@ -121,4 +121,7 @@ def _parse_date_from_filename(filename):
 
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(
+        port=8000,  # macOS blocks default port 5000 when proxying through ngrok
+        debug=True
+    )
