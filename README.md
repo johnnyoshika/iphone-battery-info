@@ -14,7 +14,10 @@ Environment:
 1. Create a virtual environment: `python -m venv venv`
 2. Activate virtualenv: `.\venv\Scripts\activate` (Windows), `source venv/bin/activate` (Linux)
 3. Install packages from requirements.txt: `pip install -r requirements.txt`
-4. Copy `.env.example` to `.env` and populate `SPREADSHEET_ID` with the Google Sheet ID, which can be found in the sheet URL
+4. Copy `.env.example` to `.env` and:
+
+- Set an arbitrary `API_KEY` (which will be used in the `Authorization` header of the http request)
+- Populate `SPREADSHEET_ID` with the Google Sheet ID, which can be found in the sheet URL
 
 ### Google Sheets API
 

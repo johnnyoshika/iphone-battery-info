@@ -1,10 +1,12 @@
 import os
 from flask import Flask, request, jsonify
+from functools import wraps
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from dotenv import load_dotenv
 
 load_dotenv()
+
 
 # Define the path to your service account JSON file
 service_account_file = "service-account.json"
@@ -21,7 +23,29 @@ spreadsheet_id = os.getenv("SPREADSHEET_ID")
 app = Flask(__name__)
 
 
+api_key = os.getenv('API_KEY')
+
+
+def require_api_key(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        auth_header = request.headers.get('Authorization')
+
+        if not auth_header:
+            return jsonify({'error': 'Authorization header is missing.'}), 401
+
+        parts = auth_header.split()
+
+        if len(parts) == 2 and parts[0] == 'Bearer' and parts[1] == api_key:
+            return f(*args, **kwargs)
+        else:
+            return jsonify({'error': 'Invalid API key.'}), 401
+
+    return decorated_function
+
+
 @app.route('/battery_info', methods=['PUT'])
+@require_api_key
 def battery_info():
     data = request.get_json()
 
