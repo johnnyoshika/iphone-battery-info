@@ -25,6 +25,8 @@ Environment:
 
 ## Usage
 
+Start app: `python app.py`
+
 On iPhone, go to `Settings` -> `Privacy & Security` -> `Analytics & Improvements`.
 
 From there, enable `Share iPhone Analytics`. By turning this on, the iPhone will create a `Analytics-YYYY-MM-DD-######.ips.ca.synced` file daily.
