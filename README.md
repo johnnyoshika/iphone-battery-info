@@ -37,3 +37,35 @@ From there, enable `Share iPhone Analytics`. By turning this on, the iPhone will
 Go to `Analytics Data` and find the file that looks like `Analytics-YYYY-MM-DD-######.ips.ca.synced`. Open it, tap the share sheet, then select `Send Battery Info`. This shortcut is a modification of the one posted by @grapplerone here: https://www.reddit.com/r/ios/comments/yf6mu0/comment/iu1zvuw/
 
 The shortcut sends an http put request to this API.
+
+## Run as a service on Raspberry Pi
+
+On Raspberry Pi, create this file at `/etc/systemd/system/iphone-battery-info.service`
+
+```
+[Unit]
+Description=iPhone Battery Info
+After=network.target
+
+[Service]
+User=pi
+WorkingDirectory=/home/pi/projects/iphone-battery-info
+Environment=FLASK_ENV=production
+Environment=FLASK_PORT=8000
+ExecStart=/home/pi/projects/iphone-battery-info/venv/bin/python /home/pi/projects/iphone-battery-info/app.py
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Reload systemd daemon: `sudo systemctl daemon-reload`
+Enable our service for autostart: `sudo systemctl enable iphone-battery-info`
+List enabled services: `systemctl list-unit-files | grep enabled`
+Access logs: `journalctl -u iphone-battery-info`
+Make sure to restart Pi after everything is set up
+Helpfun commands:
+
+- `systemctl status iphone-battery-info`
+- `sudo systemctl stop iphone-battery-info`
+- `sudo systemctl start iphone-battery-info`
