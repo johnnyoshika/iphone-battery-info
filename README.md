@@ -37,29 +37,3 @@ From there, enable `Share iPhone Analytics`. By turning this on, the iPhone will
 Go to `Analytics Data` and find the file that looks like `Analytics-YYYY-MM-DD-######.ips.ca.synced`. Open it, tap the share sheet, then select `Send Battery Info`. This shortcut is a modification of the one posted by @grapplerone here: https://www.reddit.com/r/ios/comments/yf6mu0/comment/iu1zvuw/
 
 The shortcut sends an http put request to this API.
-
-## Sniff HTTP Requests
-
-### Windows
-
-Use [2. Old Solution (Not recommended)](https://docs.proxyman.io/debug-devices/python#2.-old-solution-not-recommended).
-
-1. Download cert from Proxyman: Certificate -> Export -> Root Certificate as PEM...
-2. Save that file to certs folder
-3. Inside venv: `python proxyman.py add`
-4. Paste relative path to cert file
-
-To disable proxyman proxy:
-
-1. Inside venv: `python proxyman.py remove`
-
-### Mac
-
-Use [1. New Automatic Solution (v4.7.0 or later)](https://docs.proxyman.io/debug-devices/python#1.-new-automatic-solution-v4.7.0-or-later).
-
-When new Terminal launches, open vscode from there:
-
-```
-cd projects/iphone-battery-info
-code .
-```
