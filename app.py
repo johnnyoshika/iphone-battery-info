@@ -66,6 +66,16 @@ def battery_info():
         battery_health = float(data.get("battery_health"))
         precise_battery_health = round(
             (battery_nominal_capacity / battery_rated_capacity) * 100, 2)
+        battery_health_metric = float(data.get("battery_health_metric"))
+        daily_min_soc = float(data.get("daily_min_soc"))
+        daily_max_soc = float(data.get("daily_max_soc"))
+        min_temperature = float(data.get("min_temperature"))
+        max_temperature = float(data.get("max_temperature"))
+        ave_temperature = float(data.get("ave_temperature"))
+        max_charge_current = float(data.get("max_charge_current"))
+        max_discharge_current = float(data.get("max_discharge_current"))
+        max_over_charge_current = data.get("max_over_charge_current")
+        max_over_discharge_current = data.get("max_over_discharge_current")
 
         row_data = [
             date_string,
@@ -76,7 +86,17 @@ def battery_info():
             battery_maximum_capacity,
             battery_nominal_capacity,
             battery_health,
-            precise_battery_health
+            precise_battery_health,
+            battery_health_metric,
+            daily_min_soc,
+            daily_max_soc,
+            min_temperature,
+            max_temperature,
+            ave_temperature,
+            max_charge_current,
+            max_discharge_current,
+            max_over_charge_current,
+            max_over_discharge_current
         ]
 
         # Check if the date exists in the first column
@@ -91,7 +111,7 @@ def battery_info():
             if row and row[0] == date_string:
 
                 # Update existing row
-                range_name = f"A{index+1}:I{index+1}"
+                range_name = f"A{index+1}:T{index+1}"
                 body = {
                     'values': [row_data]
                 }
