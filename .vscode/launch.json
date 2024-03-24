@@ -1,0 +1,22 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+      {
+          "name": "Python: Flask",
+          "type": "debugpy",
+          "request": "launch",
+          "module": "flask",
+          "env": {
+              "FLASK_APP": "app.py", // Your Flask app entry file
+              "FLASK_ENV": "development",
+              "FLASK_RUN_PORT": "8000" // Ensures Flask runs on port 8000
+          },
+          "args": [
+              "run",
+              "--no-debugger", // Ensures Flask's built-in debugger does not interfere with VS Code's debugger
+              "--no-reload" // Optional: Disables auto-reloader
+          ],
+          "jinja": true
+      }
+  ]
+}
