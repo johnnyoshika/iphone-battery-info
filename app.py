@@ -99,6 +99,8 @@ def battery_info():
         return jsonify({"error": str(e)}), 400
 
 
+# Currently not using this. What we thought would be a more reliable way to extract min and max battery level and temperature values,
+# it's proving to be inconsistent.
 @app.route('/battery_jsonl', methods=['PUT'])
 @require_api_key
 def battery_jsonl():
