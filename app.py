@@ -87,6 +87,43 @@ def battery_info():
     except (ValueError, TypeError, Exception) as e:
         return jsonify({"error": str(e)}), 400
 
+@app.route('/mac_battery_info', methods=['PUT'])
+@require_api_key
+def mac_battery_info():
+    data = request.get_json()
+
+    if not data:
+        return jsonify({"error": "Invalid JSON data"}), 400
+
+    try:
+        date_string = data.get("date")
+        cycle_count = int(data.get("cycle_count"))
+        design_capacity = float(data.get("design_capacity"))
+        apple_raw_max_capacity = float(data.get("apple_raw_max_capacity"))
+        nominal_charge_capacity = float(data.get("nominal_charge_capacity"))
+        max_capacity = float(data.get("max_capacity"))
+
+        precise_battery_health = round(
+            (apple_raw_max_capacity / design_capacity) * 100, 2)
+
+        _insert_row(
+            "MacBook Pro",
+            [
+                date_string,
+                cycle_count,
+                design_capacity,
+                apple_raw_max_capacity,
+                nominal_charge_capacity,
+                max_capacity,
+                precise_battery_health
+            ]
+        )
+
+        return jsonify({"message": "Mac battery info updated successfully"})
+
+    except (ValueError, TypeError, Exception) as e:
+        return jsonify({"error": str(e)}), 400
+
 
 def _parse_date_from_filename(filename):
     parts = filename.split('-')
