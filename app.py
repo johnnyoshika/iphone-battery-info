@@ -4,7 +4,6 @@ from functools import wraps
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from dotenv import load_dotenv
-import json
 
 load_dotenv()
 
@@ -57,111 +56,31 @@ def battery_info():
         # Parse analytics_filename to get the date part
         analytics_filename = data.get("analytics_filename")
         date_string = _parse_date_from_filename(analytics_filename)
+
         device_model = data.get("device_model")
         os_version = data.get("os_version")
-        battery_cycles = int(data.get("battery_cycles"))
-        battery_maximum_capacity = float(data.get("battery_maximum_capacity"))
-        battery_nominal_capacity = float(data.get("battery_nominal_capacity"))
-        battery_health = float(data.get("battery_health"))
-        battery_health_metric = float(data.get("battery_health_metric"))
-        daily_min_soc = float(data.get("daily_min_soc"))
-        daily_max_soc = float(data.get("daily_max_soc"))
-        min_temperature = float(data.get("min_temperature"))
-        max_temperature = float(data.get("max_temperature"))
-        ave_temperature = float(data.get("ave_temperature"))
-        max_charge_current = float(data.get("max_charge_current"))
-        max_discharge_current = float(data.get("max_discharge_current"))
-        max_over_charge_current = data.get("max_over_charge_current")
-        max_over_discharge_current = data.get("max_over_discharge_current")
+        cycle_count = int(data.get("cycle_count"))
+        maximum_capacity_percent = float(data.get("maximum_capacity_percent"))
+        maximum_fcc = float(data.get("maximum_fcc"))
+        apple_raw_max_capacity = float(data.get("apple_raw_max_capacity"))
+        nominal_charge_capacity = float(data.get("nominal_charge_capacity"))
+
+        capacity = _get_capacity(os_version, apple_raw_max_capacity, nominal_charge_capacity)
 
         _insert_row(
-            date_string,
-            device_model,
-            os_version,
-            battery_cycles,
-            battery_maximum_capacity,
-            battery_nominal_capacity,
-            battery_health,
-            battery_health_metric,
-            daily_min_soc,
-            daily_max_soc,
-            min_temperature,
-            max_temperature,
-            ave_temperature,
-            max_charge_current,
-            max_discharge_current,
-            max_over_charge_current,
-            max_over_discharge_current,
-        )
-
-        return jsonify({"message": "Battery info updated successfully"})
-    except (ValueError, TypeError, Exception) as e:
-        return jsonify({"error": str(e)}), 400
-
-
-# Currently not using this. What we thought would be a more reliable way to extract min and max battery level and temperature values,
-# it's proving to be inconsistent.
-@app.route('/battery_jsonl', methods=['PUT'])
-@require_api_key
-def battery_jsonl():
-    data = request.get_json()
-
-    if not data:
-        return jsonify({"error": "Invalid JSON data"}), 400
-
-    try:
-        # Parse analytics_filename to get the date part
-        analytics_filename = data.get("analytics_filename")
-        device_model = data.get("device_model")
-        jsonl = data.get("jsonl")
-
-        date_string = _parse_date_from_filename(analytics_filename)
-
-        # The technique we'll use here is to check min max values by looking at different lines in jsonl.
-        daily_min_soc, daily_max_soc = _find_min_max_values(
-            jsonl, 'BatteryLevel')
-        min_temperature, max_temperature = _find_min_max_values(
-            jsonl, 'last_value_BatteryTemperature')
-
-        os_version = _find_value(jsonl, "os_version")
-        battery_cycles = int(_find_value(jsonl, "last_value_CycleCount"))
-        battery_maximum_capacity = float(
-            _find_value(jsonl, "last_value_MaximumFCC"))
-        battery_nominal_capacity = float(
-            _find_value(jsonl, "last_value_NominalChargeCapacity"))
-        battery_health = float(_find_value(
-            jsonl, "last_value_MaximumCapacityPercent"))
-        battery_health_metric = float(
-            _find_value(jsonl, "last_value_BatteryHealthMetric"))
-        ave_temperature = float(_find_value(
-            jsonl, "last_value_AverageTemperature"))
-        max_charge_current = float(_find_value(
-            jsonl, "last_value_MaximumChargeCurrent"))
-        max_discharge_current = float(
-            _find_value(jsonl, "last_value_MaximumDischargeCurrent"))
-        max_over_charge_current = _find_value(jsonl,
-                                              "last_value_MaximumOverChargedCapacity")
-        max_over_discharge_current = _find_value(jsonl,
-                                                 "last_value_MaximumOverDischargedCapacity")
-
-        _insert_row(
-            date_string,
-            device_model,
-            os_version,
-            battery_cycles,
-            battery_maximum_capacity,
-            battery_nominal_capacity,
-            battery_health,
-            battery_health_metric,
-            daily_min_soc,
-            daily_max_soc,
-            min_temperature,
-            max_temperature,
-            ave_temperature,
-            max_charge_current,
-            max_discharge_current,
-            max_over_charge_current,
-            max_over_discharge_current,
+            _get_sheet(os_version),
+            [
+                date_string,
+                _get_device_model(os_version, device_model),
+                os_version,
+                cycle_count,
+                capacity["rated_capacity"],
+                maximum_fcc,
+                apple_raw_max_capacity,
+                nominal_charge_capacity,
+                maximum_capacity_percent,
+                capacity["precise_battery_health"]
+            ]
         )
 
         return jsonify({"message": "Battery info updated successfully"})
@@ -175,126 +94,59 @@ def _parse_date_from_filename(filename):
     date_str = f"{parts[1]}-{parts[2]}-{parts[3]}"  # Extracts YYYY-MM-DD
     return date_str
 
+def _is_watch(os_version):
+    if "Watch OS" in os_version:
+        return True
+    elif "iPhone OS" in os_version:
+        return False
+    else:
+        raise ValueError(f"Unsupported OS version: {os_version}")
 
-def _find_min_max_values(jsonl, property):
-    values = []
+def _get_sheet(os_version):
+    return "Watch" if _is_watch(os_version) else "Phone"
 
-    # Split the content by lines and parse each line as JSON
-    for line in jsonl.strip().split('\n'):
-        # Try to convert string to a dictionary
-        try:
-            json_content = json.loads(line)
-            message = json_content.get('message', None)
-            if (not message):
-                continue
+def _get_device_model(os_version, device_model):
+    # device_model passed to API will be the device used to send api request, which will always be iPhone,
+    # so fix it for watch here
+    return "Apple Watch 7" if _is_watch(os_version) else device_model
 
-            value = message.get(property, None)
-            if (not value):
-                continue
+def _get_capacity(os_version, apple_raw_max_capacity, nominal_charge_capacity):
+    if _is_watch(os_version):
+        rated_capacity = 284
 
-            values.append(value)
-        except (SyntaxError, ValueError) as e:
-            print(f"Error parsing JSON: {e}")
+        # Use apple_raw_max_capacity b/c that seems to be the one that explains the battery capacity on macOS
+        # https://www.reddit.com/r/MacOS/comments/16o1bs8/any_way_to_see_the_battery_health_percentage_in/
+        precise_battery_health = round(
+            (apple_raw_max_capacity / rated_capacity) * 100, 2)
+    else:
+        rated_capacity = 3349
 
-    # Find the min and max values
-    min_value = min(values) if values else None
-    max_value = max(values) if values else None
+        # We'll use nominal_charge_capacity b/c it's more stable, whereas apple_raw_max_capacity all over the place
+        precise_battery_health = round(
+            (nominal_charge_capacity / rated_capacity) * 100, 2)
 
-    return min_value, max_value
+    return {
+        "rated_capacity": rated_capacity,
+        "precise_battery_health": precise_battery_health
+    }
 
-
-def _find_value(jsonl, property):
-    values = []
-
-    # Split the content by lines and parse each line as JSON
-    for line in jsonl.strip().split('\n'):
-        # Try to convert string to a dictionary
-        try:
-            json_content = json.loads(line)
-
-            value = json_content.get(property, None)
-            if (value):
-                values.append(value)
-                continue
-
-            message = json_content.get('message', None)
-            if (not message):
-                continue
-
-            value = message.get(property, None)
-            if (value):
-                values.append(value)
-        except (SyntaxError, ValueError) as e:
-            print(f"Error parsing JSON: {e}")
-
-    # Throw exception if all values aren't the same
-    if len(set(values)) > 1:
-        raise ValueError(f"Multiple values found for {property}")
-
-    return values[0] if values else None
-
-
-def _insert_row(
-        date_string,
-        device_model,
-        os_version,
-        battery_cycles,
-        battery_maximum_capacity,
-        battery_nominal_capacity,
-        battery_health,
-        battery_health_metric,
-        daily_min_soc,
-        daily_max_soc,
-        min_temperature,
-        max_temperature,
-        ave_temperature,
-        max_charge_current,
-        max_discharge_current,
-        max_over_charge_current,
-        max_over_discharge_current):
-
-    # Battery rated capacity in mAh (according to ChatGPT)
-    battery_rated_capacity = 3349
-    precise_battery_health = round(
-        (battery_nominal_capacity / battery_rated_capacity) * 100, 2)
-
-    row_data = [
-        date_string,
-        device_model,
-        os_version,
-        battery_cycles,
-        battery_rated_capacity,
-        battery_maximum_capacity,
-        battery_nominal_capacity,
-        battery_health,
-        precise_battery_health,
-        battery_health_metric,
-        daily_min_soc,
-        daily_max_soc,
-        min_temperature,
-        max_temperature,
-        ave_temperature,
-        max_charge_current,
-        max_discharge_current,
-        max_over_charge_current,
-        max_over_discharge_current
-    ]
-
+def _insert_row(sheet, values):
     # Check if the date exists in the first column
-    range_name = "A:A"
+    range_name = f"{sheet}!A:A"
     result = service.spreadsheets().values().get(
         spreadsheetId=spreadsheet_id, range=range_name).execute()
 
-    values = result.get('values', [])
+    result_values = result.get('values', [])
 
     found = False
-    for index, row in enumerate(values):
+    for index, row in enumerate(result_values):
+        date_string = values[0]
         if row and row[0] == date_string:
 
             # Update existing row
-            range_name = f"A{index+1}:T{index+1}"
+            range_name = f"{sheet}!A{index+1}:J{index+1}"
             body = {
-                'values': [row_data]
+                'values': [values]
             }
             service.spreadsheets().values().update(spreadsheetId=spreadsheet_id, range=range_name,
                                                    body=body, valueInputOption="RAW").execute()
@@ -302,9 +154,9 @@ def _insert_row(
             break
 
     if not found:
-        range_name = "Sheet1"
+        range_name = sheet
         body = {
-            'values': [row_data]
+            'values': [values]
         }
         service.spreadsheets().values().append(spreadsheetId=spreadsheet_id, range=range_name,
                                                body=body, valueInputOption="RAW").execute()
