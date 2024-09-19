@@ -151,16 +151,13 @@ def _get_capacity(os_version, apple_raw_max_capacity, nominal_charge_capacity):
     if _is_watch(os_version):
         rated_capacity = 284
 
-        # Use apple_raw_max_capacity b/c that seems to be the one that explains the battery capacity on macOS
-        # https://www.reddit.com/r/MacOS/comments/16o1bs8/any_way_to_see_the_battery_health_percentage_in/
-        precise_battery_health = round(
-            (apple_raw_max_capacity / rated_capacity) * 100, 2)
     else:
         rated_capacity = 3349
 
-        # We'll use nominal_charge_capacity b/c it's more stable, whereas apple_raw_max_capacity all over the place
-        precise_battery_health = round(
-            (nominal_charge_capacity / rated_capacity) * 100, 2)
+    # We'll use nominal_charge_capacity b/c it's more stable and matches the value reported in max_capacity,
+    # whereas apple_raw_max_capacity is all over the place
+    precise_battery_health = round(
+        (nominal_charge_capacity / rated_capacity) * 100, 2)
 
     return {
         "rated_capacity": rated_capacity,
